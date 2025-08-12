@@ -43,8 +43,6 @@ Clone the repository
 
 Install dependencies:
 
-bash
-Copy
-Edit
+
 pip install -r requirements.txt
 Run the notebook or Python script to train and evaluate the model
