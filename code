@@ -1,0 +1,119 @@
+import numpy as np import pandas as pd
+import matplotlib.pyplot as plt import seaborn as sns
+from sklearn.model_selection import GridSearchCV, train_test_split from sklearn.preprocessing import StandardScaler
+from sklearn.linear_model import LogisticRegression, RidgeClassifier from sklearn.svm import SVC
+from sklearn.ensemble import RandomForestClassifier from xgboost import XGBRegressor
+from sklearn.metrics import accuracy_score, confusion_matrix, f1_score import warnings
+warnings.simplefilter("ignore")
+
+from google.colab import drive drive.mount('/content/drive')
+
+df=pd.read_csv(r"/content/drive/MyDrive/diabetes.csv") df
+df.info() print(df.columns.tolist())
+# Drop unnecessary features df = df.drop(columns=['class']) df
+df.isnull().sum() print(df.columns.tolist()) df["Polyuria"].unique() df["diabetes_class"].unique() df["Age"].unique() df["Age"].value_counts()
+from sklearn.utils import resample
+# Separate majority and minority classes
+# Converting 'FraudFlag' to string type before filtering
+df_majority = df[df['diabetes_class'].astype(str).str.strip() == "No Diabetes"] df_minority = df[df['diabetes_class'].astype(str).str.strip() == "Type 1 Diabetes"] df_minority1 = df[df['diabetes_class'].astype(str).str.strip() == "Gestational Diabetes"]
+
+df_minority2 = df[df['diabetes_class'].astype(str).str.strip() == "Type 2 Diabetes"]
+
+# Downsample majority class and upsample the minority class
+df_minority2_upsampled = resample(df_minority2, replace=True, n_samples=200, random_state=100) df_minority1_upsampled = resample(df_minority1, replace=True, n_samples=200, random_state=100) df_minority_upsampled = resample(df_minority, replace=True, n_samples=200, random_state=100) df_majority_downsampled = resample(df_majority, replace=True, n_samples=200, random_state=100)
+
+# Combine minority class with downsampled majority class
+df_balanced = pd.concat([df_minority2_upsampled, df_minority1_upsampled, df_minority_upsampled, df_majority_downsampled])
+
+# Display new class counts df_balanced['diabetes_class'].value_counts() df = df_balanced
+import pandas as pd
+from sklearn.preprocessing import LabelEncoder
+
+# Initialize the label encoder le = LabelEncoder()
+
+# List of columns that are of type 'object' (categorical features) object_cols = df.select_dtypes(include=['object']).columns
+
+# Convert all object-type columns to string (to handle mixed types) for col in object_cols:
+df[col] = df[col].astype(str) # Ensure all data in the column is treated as string
+
+# Apply label encoding to each object-type column for col in object_cols:
+df[col] = le.fit_transform(df[col])
+
+# Check the result (first few rows) print(df.head())
+df.corr() plt.figure(figsize=(20,15)) sns.heatmap(df.corr(),annot=True)
+plt.title('Heatmap of Correlations',fontsize=15) plt.show()
+x = df.drop(columns=['diabetes_class'])	27
+
+y = df['diabetes_class']
+from sklearn.model_selection import train_test_split x_train,x_test,y_train,y_test=train_test_split(x,y,test_size=0.25,random_state=100) from sklearn.metrics import confusion_matrix, classification_report
+# Classification report print(classification_report(y_test, y_pred)) from catboost import CatBoostClassifier
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay import matplotlib.pyplot as plt
+import pickle
+
+# Create a CatBoost Classifier model cat_model = CatBoostClassifier(
+iterations=5,
+depth=1,	# Reduce if still overfitting
+learning_rate=0.1,		# Lower learning rate improves generalization l2_leaf_reg=5,	# L2 regularization to avoid overfitting random_seed=10,
+verbose=0
+)
+
+# Train the CatBoost model cat_model.fit(x_train, y_train)
+
+# Save the model filename = r'catboost.pkl'
+pickle.dump(cat_model, open(filename, 'wb'))
+
+# Predict on test data
+y_pred = cat_model.predict(x_test)
+
+# Generate confusion matrix
+cm = confusion_matrix(y_test, y_pred)
+
+# Display confusion matrix
+cm_display = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=['Gestational Diabetes', 'No Diabetes', 'Type 1 Diabetes', 'Type 2 Diabetes'])
+cm_display.plot(cmap=plt.cm.Blues) plt.title('CatBoost Confusion Matrix')
+plt.show()	28
+
+# Accuracy
+accuracy = cat_model.score(x_test, y_test) print(f"CatBoost Model Accuracy: {accuracy:.2f}")
+
+from sklearn.metrics import confusion_matrix, classification_report # Classification report
+print(classification_report(y_test, y_pred)) import numpy as np
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay, accuracy_score import matplotlib.pyplot as plt
+
+from tensorflow.keras.models import Sequential from tensorflow.keras.layers import Dense import pickle
+from tensorflow.keras.utils import to_categorical
+
+# Build ANN model ann_model = Sequential()
+
+# Input layer and first hidden layer
+ann_model.add(Dense(units=16, activation='relu', input_dim=x_train.shape[1]))
+
+# Second hidden layer ann_model.add(Dense(units=8, activation='relu'))
+
+# Output layer
+ann_model.add(Dense(units=4, activation='softmax')) # Softmax for multi-class
+
+# Compile the model
+ann_model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
+
+# One-hot encode the target variable y_train_encoded = to_categorical(y_train) y_test_encoded = to_categorical(y_test)
+
+# Train the model
+
+ann_model.fit(x_train, y_train_encoded, epochs=20, batch_size=10, verbose=1)
+
+# Predict
+y_pred = ann_model.predict(x_test)
+y_pred_classes = np.argmax(y_pred, axis=1) # Get predicted class labels
+
+# Evaluate
+accuracy = accuracy_score(y_test, y_pred_classes) print(f"ANN Model Accuracy: {accuracy:.2f}")
+
+# Confusion Matrix
+cm = confusion_matrix(y_test, y_pred_classes)
+disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=['Gestational Diabetes', 'No Diabetes', 'Type 1 Diabetes', 'Type 2 Diabetes']) # Update display labels
+disp.plot(cmap=plt.cm.Blues) plt.title("ANN Confusion Matrix") plt.show()
+
+# Save the model ann_model.save(r'ann_model.h5')
